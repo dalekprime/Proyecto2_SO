@@ -1,0 +1,9 @@
+_start 1
+.NumeroPalabras 6
+.NombreProg LoopTest
+04100000
+25000000
+04100003
+01100001
+10000003
+99000000
