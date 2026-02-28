@@ -96,20 +96,12 @@ void* mainloop(){
             if (sys.active_process == 0) {
                 //No hay procesos, la cpu duerme
                 sem_wait(&sys.cpu_wakeup);
-                sys.cpu_registers.PSW.interruptions_enabled = 1;
                 internal_timer = 0;
-                sys.pending_interrupt = INT_TIMER;
-                check_interruptions();
                 continue;
             } else {
                 //Avanza el Reloj, Si hay procesos dormidos
                 sys.time += 1;
-                internal_timer += 1;
-                if(internal_timer >= sys.time_interruption){
-                    sys.cpu_registers.PSW.interruptions_enabled = 1;
-                    sys.pending_interrupt = INT_TIMER;
-                    internal_timer = 0;
-                }
+                sys.pending_interrupt = INT_TIMER;
                 check_interruptions();
                 continue;
             }
@@ -575,6 +567,23 @@ void* mainloop(){
                 sys.pending_interrupt = INT_INVALID_INSTR;
             break;
         }
+        //Debug
+        if (sys.debug_mode_enabled == 1) {
+            debug();
+        }
+        if (sys.debug_mode_enabled == 1) debug();
+        //Timer
+        if (sys.cpu_registers.PSW.operation_mode == 0) {
+            sys.time += 1;
+            if (sys.pending_interrupt == INT_NONE) {
+                sys.cpu_registers.PSW.pc += 1;
+                internal_timer += 1;
+                sys.time += 1;
+                if (sys.time_interruption > 0 && internal_timer >= sys.time_interruption) {
+                    sys.pending_interrupt = INT_TIMER;
+                }
+            }
+        }
         //Logger
         if(sys.cpu_registers.IR < 89000000 || sys.cpu_registers.IR == 99000000 ){
             char ins[256];
@@ -582,22 +591,6 @@ void* mainloop(){
                 sys.cpu_registers.IR, sys.cpu_registers.MAR, sys.cpu_registers.AC);
             write_in_log(ins);
         };
-        //Debug
-        if (sys.debug_mode_enabled == 1) {
-            debug();
-        }
-        //Timer
-        if (sys.cpu_registers.PSW.operation_mode == 0) {
-            sys.time += 1;
-            if (sys.pending_interrupt == INT_NONE) {
-                sys.cpu_registers.PSW.pc += 1;
-                internal_timer += 1;
-                if (sys.time_interruption > 0 && internal_timer >= sys.time_interruption) {
-                    sys.pending_interrupt = INT_TIMER;
-                }
-            }
-        }
-        if (sys.debug_mode_enabled == 1) debug();
         check_interruptions();
     };
     return NULL;
