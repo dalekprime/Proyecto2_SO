@@ -48,6 +48,7 @@ void init(){
 
 //Cargador del SO
 void start_process(const char* prog_name) {
+    extern int prog_count;
     int disk_idx = -1;
     //Buscar en disco usando prog_count
     for (int i = 0; i < MULTIPROGRAMING_GRADE; i++) {
@@ -119,7 +120,7 @@ void shell() {
     char *comando;
     char *arg;
     printf("\n=== SISTEMA OPERATIVO INICIADO ===\n");
-    printf("Comandos disponibles: ejecutar <prog>, ps, memestat, apagar\n");
+    printf("Comandos disponibles: ejecutar <prog>, ps, memestat, apagar, reiniciar\n");
     while (1) {
         printf("\nUsuario@Simulador-SO:~$ ");
         if (fgets(input, sizeof(input), stdin) == NULL) break;
@@ -151,6 +152,7 @@ void shell() {
                 disk_reg[i].size = 0;
             }
             //Reiniciar variables del disco
+            extern int prog_count;
             extern int next_track;
             extern int next_cylinder;
             prog_count = 0;
@@ -193,7 +195,7 @@ void shell() {
         }
         //Comando: memestat
         else if (strcmp(comando, "memestat") == 0) {
-            printf("\n--- ESTADO DE MEMORIA (Particiones Estaticas) ---\n");
+            printf("\n--- ESTADO DE MEMORIA ---\n");
             int ocupadas = 0;
             for (int i = 0; i < MULTIPROGRAMING_GRADE; i++) {
                 printf("Particion %d (Base %d a %d): %s\n", i, OS_MEM_RESERVED + (i * MEMORY_BLOCK_SIZE), OS_MEM_RESERVED + ((i+1) * MEMORY_BLOCK_SIZE) - 1, sys.memory_blocks[i] ? "OCUPADA" : "LIBRE");
