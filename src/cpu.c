@@ -85,17 +85,20 @@ void check_interruptions(){
 void* mainloop(){
     int internal_timer = 0;
     while(1){
+        //Secuencia de Apagado
         if (sys.dma_controller.shutdown) {
+            write_in_log("Apagando");
             //Esperamos la Ultima Instruccion del DMA
             while (sys.dma_controller.active || sys.pending_interrupt != INT_NONE) {
                 check_interruptions();
-                usleep(100);
             }
             break;
         }
+        //Ajustes para Dormir CPU
         if(sys.current_pid == -1 && sys.ready_head == sys.ready_tail){
+            write_in_log("Domir");
             if (sys.active_process == 0) {
-                //No hay absolutamente nada que hacer
+                //No hay procesos, la cpu duerme
                 sem_wait(&sys.cpu_wakeup);
                 internal_timer = 0;
                 if (sys.cpu_registers.PSW.pc != 103) {
@@ -105,28 +108,11 @@ void* mainloop(){
                 }
                 continue;
             } else {
-                //Hay procesos dormidos
-                usleep(1000);
+                //Avanza el Reloj, Si hay procesos dormidos
                 sys.time += 1;
-                bool woke_up = false;
-                for (int i = 0; i < MULTIPROGRAMING_GRADE; i++) {
-                    if (sys.process_table[i].state == WAITING && sys.time >= sys.process_table[i].wake_up_time) {
-                        sys.process_table[i].state = READY;
-                        sys.ready_queue[sys.ready_tail] = i;
-                        sys.ready_tail = (sys.ready_tail + 1) % MULTIPROGRAMING_GRADE;
-                        woke_up = true;
-                        char log_msg[256];
-                        sprintf(log_msg, "KERNEL >> Proceso %d despertado", i);
-                        write_in_log(log_msg);
-                    }
-                }
-                //Si alguien desperto, obligamos al Kernel a ejecutar el planificador
-                if (woke_up) {
-                    sys.cpu_registers.PSW.interruptions_enabled = 1;
-                    sys.pending_interrupt = INT_TIMER;
-                    check_interruptions();
-                }
-                continue; 
+                sys.pending_interrupt = INT_TIMER;
+                check_interruptions();
+                continue;
             }
         }
         //Fetch Phase
@@ -432,11 +418,19 @@ void* mainloop(){
                             //Dormir
                             param = memory_read(sys.cpu_registers.SP);
                             sys.cpu_registers.SP--;
+                            //SALVAGUARDAR ESTADO
+                            int real_pc = memory_read(sys.cpu_registers.SP);
+                            sys.cpu_registers.SP--;
+                            sys.cpu_registers.PSW.pc = real_pc;
+                            sys.cpu_registers.PSW.operation_mode = 0; 
+                            sys.cpu_registers.PSW.interruptions_enabled = 1;
+                            sys.process_table[sys.current_pid].data = sys.cpu_registers;
+                            //Pasamos a bloqueado
                             sys.process_table[sys.current_pid].state = WAITING;
                             sys.process_table[sys.current_pid].wake_up_time = sys.time + param;
-                            int sleeping_pid = sys.current_pid;
-                            sys.current_pid = -1; 
-                            sys.cpu_registers.PSW.pc = 99; 
+                            //Encolar en Bloqueados
+                            sys.waiting_queue[sys.waiting_tail] = sys.current_pid;
+                            sys.waiting_tail = (sys.waiting_tail + 1) % MULTIPROGRAMING_GRADE;
                             sys.pending_interrupt = INT_TIMER;
                         break;
                         default:
@@ -452,19 +446,17 @@ void* mainloop(){
             case 93:
                 if(sys.cpu_registers.PSW.operation_mode == 1){
                     write_in_log("KERNEL >> Interrupcion de Reloj");
-                    internal_timer = 0;
                     //SALVAGUARDAR PROCESO ACTUAL
                     if (sys.current_pid != -1 && sys.process_table[sys.current_pid].state == RUNNING) {
                         //Extraemos el PC real
                         int real_pc = memory_read(sys.cpu_registers.SP);
                         sys.cpu_registers.SP--;
-                        CPU_REGISTERS temp_regs2 = sys.cpu_registers;
-                        temp_regs2.PSW.pc = real_pc;
-                        temp_regs2.PSW.operation_mode = 0; 
-                        temp_regs2.PSW.interruptions_enabled = 1;
-                        //Guardamos los Registros
-                        sys.process_table[sys.current_pid].data = temp_regs2;
+                        sys.cpu_registers.PSW.pc = real_pc;
                         //Incluimos el Proceso en la Cola de LISTOS
+                        sys.cpu_registers.PSW.operation_mode = 0; 
+                        sys.cpu_registers.PSW.interruptions_enabled = 1;
+                        //Guardamos los Registros
+                        sys.process_table[sys.current_pid].data = sys.cpu_registers;
                         sys.process_table[sys.current_pid].state = READY;
                         sys.ready_queue[sys.ready_tail] = sys.current_pid;
                         sys.ready_tail = (sys.ready_tail + 1) % MULTIPROGRAMING_GRADE;
@@ -472,6 +464,7 @@ void* mainloop(){
                         sprintf(log_msg, "KERNEL >> Quantum Agotado. Saliente: PID %d", sys.current_pid);
                         write_in_log(log_msg);
                     }
+                    internal_timer = 0;
                     //Revisar Procesos Dormidos
                     for (int i = 0; i < MULTIPROGRAMING_GRADE; i++) {
                         if (sys.process_table[i].state == WAITING) {
@@ -496,9 +489,8 @@ void* mainloop(){
                         sprintf(log_msg, "KERNEL >> Cambio de Contexto. Entrante: PID %d", sys.current_pid);
                         write_in_log(log_msg);
                     } else {
-                        //Si la cola esta vacia, la CPU entra en Reposo
+                        //Si la cola está vacía, la CPU entra en Reposo
                         sys.current_pid = -1;
-                        sys.cpu_registers.PSW.operation_mode = 1;
                     }
                 }else{
                     continue;
@@ -584,26 +576,29 @@ void* mainloop(){
                 sys.pending_interrupt = INT_INVALID_INSTR;
             break;
         }
+        //Debug
+        if (sys.debug_mode_enabled == 1) {
+            debug();
+        }
+        if (sys.debug_mode_enabled == 1) debug();
+        sys.time += 1;
+        //Timer
+        if (sys.cpu_registers.PSW.operation_mode == 0) {
+            if (sys.pending_interrupt == INT_NONE) {
+                sys.cpu_registers.PSW.pc += 1;
+                internal_timer += 1;
+                if (sys.time_interruption > 0 && internal_timer >= sys.time_interruption) {
+                    sys.pending_interrupt = INT_TIMER;
+                }
+            }
+        }
         //Logger
         if(sys.cpu_registers.IR < 89000000 || sys.cpu_registers.IR == 99000000 ){
             char ins[256];
-            sprintf(ins, "Instruccion Ejecutada: %d | MAR: %d | AC: %d",
-                sys.cpu_registers.IR, sys.cpu_registers.MAR, sys.cpu_registers.AC);
+            sprintf(ins, "Instruccion Ejecutada: %d | MAR: %d | AC: %d | Ciclos: %d",
+                sys.cpu_registers.IR, sys.cpu_registers.MAR, sys.cpu_registers.AC, sys.time);
             write_in_log(ins);
         };
-        //Debug
-        if (sys.debug_mode_enabled == 1) debug();
-        //Timer
-        sys.time += 1;
-        if (sys.cpu_registers.PSW.operation_mode == 0) {
-            if (sys.pending_interrupt == INT_NONE) {
-                sys.cpu_registers.PSW.pc += 1; 
-                internal_timer += 1;
-            }
-            if (sys.time_interruption > 0 && internal_timer >= sys.time_interruption) {
-                sys.pending_interrupt = INT_TIMER;
-            }
-        }
         check_interruptions();
     };
     return NULL;
