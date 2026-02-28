@@ -50,7 +50,6 @@ void init(){
 void start_process(const char* prog_name) {
     int disk_idx = -1;
     //Buscar en disco usando prog_count
-    extern int prog_count; 
     for (int i = 0; i < MULTIPROGRAMING_GRADE; i++) {
         if (strcmp(disk_reg[i].prog_name, prog_name) == 0 && disk_reg[i].size > 0) {
             disk_idx = i; break;
@@ -152,7 +151,6 @@ void shell() {
                 disk_reg[i].size = 0;
             }
             //Reiniciar variables del disco
-            extern int prog_count;
             extern int next_track;
             extern int next_cylinder;
             prog_count = 0;
