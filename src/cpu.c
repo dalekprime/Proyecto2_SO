@@ -352,6 +352,30 @@ void* mainloop(){
             case 92:
                 if(sys.cpu_registers.PSW.operation_mode == 1){
                     write_in_log("KERNEL >> Llamada al Sistema");
+                    switch (sys.cpu_registers.AC){
+                        case 1:
+                            //Terminar Programa
+                            int param = memory_read(sys.cpu_registers.SP);
+                            sys.cpu_registers.SP--;
+                        break;
+                        case 2:
+                            //Imprimir por Pantalla
+                            int param = memory_read(sys.cpu_registers.SP);
+                            sys.cpu_registers.SP--;
+                        break;
+                        case 3:
+                            //Leer por Pantalla
+                        break;
+                        case 4:
+                            //Dormir
+                            int param = memory_read(sys.cpu_registers.SP);
+                            sys.cpu_registers.SP--;
+                        break;
+                        default:
+                            //Llamada Invalida
+                            sys.pending_interrupt = INT_SYSCALL_INVALID;
+                        break;
+                    }
                     //Devolver control al Usuario
                     sys.cpu_registers.PSW.pc = 99;
                 }else{

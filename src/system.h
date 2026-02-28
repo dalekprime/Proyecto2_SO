@@ -14,10 +14,11 @@
 #define OS_MEM_RESERVED 300
 #define WORD_SIZE 8
 #define MAGNITUDE_LIMIT 9999999
-#define CLOCK_INTERRUPTION_INTERVAL 12
-#define MAX_STACK_SIZE 100
+#define CLOCK_INTERRUPTION_INTERVAL 2
+#define MULTIPROGRAMING_GRADE 20
+#define MEMORY_BLOCK_SIZE 80
 
-//Codigo de Interrumpcion
+//Codigos de Interrupcion
 #define INT_NONE -1 //Default
 #define INT_SYSCALL_INVALID 0 //Llamada a Sistema Invalida
 #define INT_INVALID_INT 1 //Interrumpio Invalida
@@ -28,6 +29,13 @@
 #define INT_INVALID_ADDR 6 //Direccion Invalida
 #define INT_UNDERFLOW 7 //Underflow
 #define INT_OVERFLOW 8 //Overflow
+
+//Codigos de Estado
+#define NEW 0 //Nuevo Proceso
+#define READY 1 //Proceso Listo
+#define RUNNING 2 //Proceso en Ejecucion
+#define WAITING 3 //Proceso Bloqueado
+#define TERMINATED 4 //Proceso Terminado
 
 //Palabra de Estado
 typedef struct{
@@ -53,6 +61,23 @@ typedef struct{
     int SP; //Tope de la Pila
     PSW_t PSW; //Estado Del sistema
 }CPU_REGISTERS;
+
+//Bloque de Control de Proceso
+typedef struct{
+    int pid;
+    char prog_name[64];
+    int state;
+    CPU_REGISTERS data;
+}BCP;
+
+//Registro de Disco
+typedef struct{
+    char prog_name[64];
+    int track;
+    int cylinder;
+    int sector;
+    int size;
+}DISK_DIR;
 
 //Estado del DMA
 typedef struct {
@@ -94,6 +119,9 @@ typedef struct{
 
 //Instancia del Sistema
 extern SYSTEM_STATE sys;
+
+//Instancia de Registros de Disco
+extern DISK_DIR disk_reg[20];
 
 //Funciones de Proposito General
 static const int POWERS[] = {
