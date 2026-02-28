@@ -113,8 +113,24 @@ typedef struct{
     int time_interruption;
     //Modo del Sistema
     int debug_mode_enabled; //0 Disable, 1 Enable
-    //Interrumpion
+    //Interrupion
     int pending_interrupt;
+    //Tabla de Procesos
+    BCP process_table[MULTIPROGRAMING_GRADE];
+    //Total de Procesos Activos
+    int active_process;
+    //PID de Proceso Actual
+    int current_pid;
+    //Contol de Bloques de Memoria
+    bool memory_blocks[MULTIPROGRAMING_GRADE];
+    //Cola de Listos
+    int ready_queue[MULTIPROGRAMING_GRADE];
+    int ready_head;
+    int ready_tail;
+    //Cola de Bloqueados
+    int waiting_queue[MULTIPROGRAMING_GRADE];
+    int waiting_head;
+    int waiting_tail;
 }SYSTEM_STATE;
 
 //Instancia del Sistema
