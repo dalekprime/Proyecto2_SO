@@ -1,4 +1,5 @@
 #include "loader.h"
+#include "disk.h"
 
 //Control de Disco
 DISK_DIR disk_reg[MULTIPROGRAMING_GRADE];
@@ -27,39 +28,50 @@ int load_program(const char *filename, const char *prog_name) {
         printf("Archivo no Encontrado\n");
         return -1;
     }
+
     char line[256];
     int instructions_loaded = 0;
-
-
-    int current_addr = base_address;
-
-    int prev_mode = sys.cpu_registers.PSW.operation_mode;
-    sys.cpu_registers.PSW.operation_mode = 1; 
-
+    char sector_buffer[TAM_SECTOR];
+    int current_sector = 0;
+    //Registrar el programa
+    strcpy(disk_reg[disk_prog_count].prog_name, prog_name);
+    disk_reg[prog_count].track = next_track;
+    disk_reg[prog_count].cylinder = next_cylinder;
+    disk_reg[prog_count].sector = 0; 
+    //Leer archivo y guardar cada instrucción en un sector distinto
     while (fgets(line, sizeof(line), file)) {
         clean_line(line);
         if (strlen(line) == 0) continue;
-        //Procesar Directivas
         if (line[0] == '.') {
             if (strncmp(line, ".NombreProg", 11) == 0) {
                 write_in_log(line);
             }
             continue; 
         }
-        //Procesar Instrucciones
         char *endptr;
         long instruction = strtol(line, &endptr, 10); 
         if (line != endptr) {
-            if (current_addr >= MEM_SIZE) {
-                break;
-            }
-            memory_write(current_addr, (int)instruction);
-            current_addr++;
+            memset(sector_buffer, 0, TAM_SECTOR);
+            //Guardamos la instrucción como TEXTO para que tu DMA pueda usar atoi()
+            sprintf(sector_buffer, "%ld", instruction); 
+            write_sector(next_track, next_cylinder, current_sector, sector_buffer);
+            current_sector++;
             instructions_loaded++;
         }
     }
-    memory_write(current_addr, 99000000);
+    //Escribir el HALT de seguridad al final en su propio sector
+    memset(sector_buffer, 0, TAM_SECTOR);
+    sprintf(sector_buffer, "99000000");
+    write_sector(nex_track, next_cylinder, current_sector, sector_buffer);
+    instructions_loaded++;
     fclose(file);
-    sys.cpu_registers.PSW.operation_mode = prev_mode;
+    //Actualizar el catálogo
+    disk_reg[prog_count].size = instructions_loaded;
+    prog_count++;
+    //Avanzamos al siguiente cilindro para el próximo programa
+    next_cylinder++; 
+    char log_msg[256];
+    sprintf(log_msg, "KERNEL >> Programa '%s' cargado en Disco (Cilindro %d).", prog_name, next_cylinder - 1);
+    write_in_log(log_msg);
     return instructions_loaded;
 }

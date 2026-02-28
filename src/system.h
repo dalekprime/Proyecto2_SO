@@ -8,6 +8,7 @@
 #include <math.h>
 #include <string.h>
 #include <unistd.h>
+#include <semaphore.h>
 
 //Constante del Hardware
 #define MEM_SIZE 2000
@@ -68,6 +69,7 @@ typedef struct{
     char prog_name[64]; //Nombre del Proceso
     int state; //Estado del Proceso
     int memory_block_asign; //Bloque de Memoria Asignado al Proceso
+    int wake_up_time; //Tiempo en que despertara un proceso Dormido
     CPU_REGISTERS data; //Registros y PC del Proceso
 }BCP;
 
@@ -132,6 +134,8 @@ typedef struct{
     int waiting_queue[MULTIPROGRAMING_GRADE];
     int waiting_head;
     int waiting_tail;
+    //Control del CPU
+    sem_t cpu_wakeup;
 }SYSTEM_STATE;
 
 //Instancia del Sistema

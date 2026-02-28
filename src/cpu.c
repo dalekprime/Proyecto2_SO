@@ -84,8 +84,13 @@ void check_interruptions(){
 //Main Loop del CPU
 void* mainloop(){
     int internal_timer = 0;
-    bool end = 0;
     while(1){
+        if(sys.current_pid == -1 && sys.ready_head == sys.ready_tail){
+            sem_wait(&sys.cpu_wakeup);
+            sys.pending_interrupt = INT_TIMER;
+            check_interruptions();
+            continue;
+        }
         //Interrumpcion de Reloj
         if(internal_timer >= sys.time_interruption){
             sys.pending_interrupt = INT_TIMER;
@@ -352,32 +357,68 @@ void* mainloop(){
             case 92:
                 if(sys.cpu_registers.PSW.operation_mode == 1){
                     write_in_log("KERNEL >> Llamada al Sistema");
+                    int param;
+                    char log_msg[256];
                     switch (sys.cpu_registers.AC){
                         case 1:
                             //Terminar Programa
-                            int param = memory_read(sys.cpu_registers.SP);
+                            param = memory_read(sys.cpu_registers.SP);
                             sys.cpu_registers.SP--;
+                            sprintf(log_msg, "\n>> Proceso %d finalizado con estado: %d\n", sys.current_pid, param);
+                            write_in_log(log_msg);
+                            printf("\n>> Proceso %d finalizado con estado: %d\n", sys.current_pid, param);
+                            //Libera Memoria
+                            int block_index = (sys.cpu_registers.RB - OS_MEM_RESERVED) / MEMORY_BLOCK_SIZE;
+                            sys.memory_blocks[block_index] = false;
+                            //Marcar como terminado
+                            sys.process_table[sys.current_pid].state = TERMINATED;
+                            sys.active_process--;
+                            //Forzar al Planificador a meter el siguiente proceso
+                            sys.pending_interrupt = INT_TIMER;
                         break;
                         case 2:
                             //Imprimir por Pantalla
-                            int param = memory_read(sys.cpu_registers.SP);
+                            param = memory_read(sys.cpu_registers.SP);
                             sys.cpu_registers.SP--;
+                            sprintf(log_msg, "\n[Proceso %d] >> %d\n", sys.current_pid, param);
+                            write_in_log(log_msg);
+                            printf("\n[Proceso %d] >> %d\n", sys.current_pid, param);
+                            //Devolver control al Usuario
+                            sys.cpu_registers.PSW.pc = 99;
                         break;
                         case 3:
                             //Leer por Pantalla
+                            sprintf(log_msg, "\n[Proceso %d] >> Lectura por Pantalla\n", sys.current_pid);
+                            write_in_log(log_msg);
+                            printf("\n[Proceso %d] Ingrese un valor entero: ", sys.current_pid);
+                            scanf("%d", &param);
+                            sys.cpu_registers.AC = param;
+                            //Devolver control al Usuario
+                            sys.cpu_registers.PSW.pc = 99;
                         break;
                         case 4:
                             //Dormir
-                            int param = memory_read(sys.cpu_registers.SP);
+                            param = memory_read(sys.cpu_registers.SP);
                             sys.cpu_registers.SP--;
+                            //SALVAGUARDAR ESTADO
+                            int real_pc = memory_read(sys.cpu_registers.SP);
+                            sys.cpu_registers.SP--;
+                            sys.cpu_registers.PSW.pc = real_pc;
+                            sys.cpu_registers.PSW.operation_mode = 0; 
+                            sys.cpu_registers.PSW.interruptions_enabled = 1;
+                            sys.process_table[sys.current_pid].data = sys.cpu_registers;
+                            //Pasamos a bloqueado
+                            sys.process_table[sys.current_pid].state = WAITING;
+                            sys.process_table[sys.current_pid].wake_up_time = sys.time + param;
+                            //Encolar en Bloqueados
+                            sys.waiting_queue[sys.waiting_tail] = sys.current_pid;
+                            sys.waiting_tail = (sys.waiting_tail + 1) % MULTIPROGRAMING_GRADE;
                         break;
                         default:
                             //Llamada Invalida
                             sys.pending_interrupt = INT_SYSCALL_INVALID;
                         break;
                     }
-                    //Devolver control al Usuario
-                    sys.cpu_registers.PSW.pc = 99;
                 }else{
                     continue;
                 };
@@ -386,8 +427,37 @@ void* mainloop(){
             case 93:
                 if(sys.cpu_registers.PSW.operation_mode == 1){
                     write_in_log("KERNEL >> Interrupcion de Reloj");
-                    //Devolver control al Usuario
-                    sys.cpu_registers.PSW.pc = 99;
+                    //SALVAGUARDAR PROCESO ACTUAL
+                    if (sys.current_pid != -1 && sys.process_table[sys.current_pid].state == RUNNING) {
+                        //Extraemos el PC real
+                        int real_pc = memory_read(sys.cpu_registers.SP);
+                        sys.cpu_registers.SP--;
+                        sys.cpu_registers.PSW.pc = real_pc;
+                        //Guardamos los Registros
+                        sys.process_table[sys.current_pid].data = sys.cpu_registers;
+                        //Incluimos el Proceso en la Cola de LISTOS
+                        sys.cpu_registers.PSW.operation_mode = 0; 
+                        sys.cpu_registers.PSW.interruptions_enabled = 1;
+                        sys.process_table[sys.current_pid].state = READY;
+                        sys.ready_queue[sys.ready_tail] = sys.current_pid;
+                        sys.ready_tail = (sys.ready_tail + 1) % MULTIPROGRAMING_GRADE;
+                        char log_msg[256];
+                        sprintf(log_msg, "KERNEL >> Quantum Agotado. Saliente: PID %d", sys.current_pid);
+                        write_in_log(log_msg);
+                    }
+                    //CARGAR SIGUIENTE PROCESO
+                    if (sys.ready_head != sys.ready_tail) {
+                        sys.current_pid = sys.ready_queue[sys.ready_head];
+                        sys.ready_head = (sys.ready_head + 1) % MULTIPROGRAMING_GRADE;
+                        sys.process_table[sys.current_pid].state = RUNNING;
+                        sys.cpu_registers = sys.process_table[sys.current_pid].data;
+                        char log_msg[256];
+                        sprintf(log_msg, "KERNEL >> Cambio de Contexto. Entrante: PID %d", sys.current_pid);
+                        write_in_log(log_msg);
+                    } else {
+                        //Si la cola está vacía, la CPU entra en Reposo
+                        sys.current_pid = -1;
+                    }
                 }else{
                     continue;
                 };
@@ -449,11 +519,23 @@ void* mainloop(){
             break;
             //halt
             case 99:
-                while (sys.dma_controller.active){};
-                sys.dma_controller.shutdown = true;
-                check_interruptions();
-                pthread_join(sys.dma_controller.dma_id, NULL);
-                end = 1;
+                if (sys.cpu_registers.PSW.operation_mode == 0) {
+                    char log_msg[256];
+                    sprintf(log_msg, "KERNEL >> Proceso %d llego a instruccion HALT. Terminando.", sys.current_pid);
+                    write_in_log(log_msg);
+                    //Libera la memoria
+                    int block_index = (sys.cpu_registers.RB - OS_MEM_RESERVED) / MEMORY_BLOCK_SIZE;
+                    sys.memory_blocks[block_index] = false;
+                    //Actualiza el BCP
+                    sys.process_table[sys.current_pid].state = TERMINATED;
+                    sys.active_process--;
+                    //Llama al planificador para que asigne el siguiente trabajo
+                    sys.pending_interrupt = INT_TIMER; 
+                } else {
+                    //Si lo llama el SO
+                    while (sys.dma_controller.active){ usleep(100); };
+                    sys.dma_controller.shutdown = true;
+                }
             break;
             //Instruccion Invalida
             default:
@@ -474,13 +556,6 @@ void* mainloop(){
         sys.time += 1;
         internal_timer += 1;
         check_interruptions();
-        //Terminar
-        if(end == 1){
-            char ins[256];
-            sprintf(ins, "Programa terminado en %d...\n", sys.time);
-            write_in_log(ins);
-            break;
-        };
     };
     return NULL;
 };
