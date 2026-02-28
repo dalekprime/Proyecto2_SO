@@ -1,5 +1,11 @@
 #include "loader.h"
 
+//Control de Disco
+DISK_DIR disk_reg[MULTIPROGRAMING_GRADE];
+int prog_count = 0;
+int next_track = 0;
+int next_cylinder = 0;
+
 // Función auxiliar para limpiar la línea 
 void clean_line(char *line) {
     char *comment = strstr(line, "//"); // Buscar comentarios
@@ -11,16 +17,21 @@ void clean_line(char *line) {
     line[strcspn(line, "\r")] = 0;
 }
 
-int load_program(const char *filename, int base_address) {
+int load_program(const char *filename, const char *prog_name) {
+    if(prog_count >= MULTIPROGRAMING_GRADE){
+        printf("Error: Disco Lleno");
+        return -1;
+    }
     FILE *file = fopen(filename, "r");
     if (!file) {
         printf("Archivo no Encontrado\n");
         return -1;
     }
-
     char line[256];
-    int current_addr = base_address;
     int instructions_loaded = 0;
+
+
+    int current_addr = base_address;
 
     int prev_mode = sys.cpu_registers.PSW.operation_mode;
     sys.cpu_registers.PSW.operation_mode = 1; 

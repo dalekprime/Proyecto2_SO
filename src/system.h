@@ -64,10 +64,11 @@ typedef struct{
 
 //Bloque de Control de Proceso
 typedef struct{
-    int pid;
-    char prog_name[64];
-    int state;
-    CPU_REGISTERS data;
+    int pid; //ID de Proceso 
+    char prog_name[64]; //Nombre del Proceso
+    int state; //Estado del Proceso
+    int memory_block_asign; //Bloque de Memoria Asignado al Proceso
+    CPU_REGISTERS data; //Registros y PC del Proceso
 }BCP;
 
 //Registro de Disco

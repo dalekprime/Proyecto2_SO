@@ -57,7 +57,7 @@ void startProgram(){
         int code_end = sys.cpu_registers.RB + prog_size;
         sys.cpu_registers.SP = code_end;
         sys.cpu_registers.RX = sys.cpu_registers.SP;
-        sys.cpu_registers.RL = code_end + MAX_STACK_SIZE;
+        sys.cpu_registers.RL = sys.cpu_registers.RB  + MEMORY_BLOCK_SIZE;
         pthread_create(&dma, NULL, (void*)dma_loop, NULL);
         sys.dma_controller.dma_id = dma;
         pthread_create(&cpu, NULL, (void*)mainloop, NULL);
@@ -106,7 +106,7 @@ int main(){
     init();
     init_disk();
     //Definimos el tiempo inical entre interrupciones
-    sys.time_interruption = 12;
+    sys.time_interruption = CLOCK_INTERRUPTION_INTERVAL;
     menu();
     return 0;
 };
