@@ -586,15 +586,18 @@ void* mainloop(){
         if (sys.debug_mode_enabled == 1) {
             debug();
         }
-        sys.time += 1;
+        //Timer
         if (sys.cpu_registers.PSW.operation_mode == 0) {
-            sys.cpu_registers.PSW.pc += 1;
-            internal_timer += 1;
+            sys.time += 1;
+            if (sys.pending_interrupt == INT_NONE) {
+                sys.cpu_registers.PSW.pc += 1;
+                internal_timer += 1;
+                if (sys.time_interruption > 0 && internal_timer >= sys.time_interruption) {
+                    sys.pending_interrupt = INT_TIMER;
+                }
+            }
         }
-        //Interrupcion de Reloj
-        if (sys.time_interruption > 0 && internal_timer >= sys.time_interruption) {
-            sys.pending_interrupt = INT_TIMER;
-        }
+        if (sys.debug_mode_enabled == 1) debug();
         check_interruptions();
     };
     return NULL;
