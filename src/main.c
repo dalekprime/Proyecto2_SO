@@ -124,7 +124,8 @@ void shell() {
     while (1) {
         printf("\nUsuario@Simulador-SO:~$ ");
         if (fgets(input, sizeof(input), stdin) == NULL) break;
-        input[strcspn(input, "\n")] = 0; 
+        input[strcspn(input, "\n")] = 0;
+        input[strcspn(input, "\r")] = 0;
         if (strlen(input) == 0) continue;
         comando = strtok(input, " ");
         //Comando: apagar

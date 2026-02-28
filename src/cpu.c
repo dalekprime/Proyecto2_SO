@@ -85,10 +85,18 @@ void check_interruptions(){
 void* mainloop(){
     int internal_timer = 0;
     while(1){
+        if (sys.dma_controller.shutdown) {
+            //Esperamos la Ultima Instruccion del DMA
+            while (sys.dma_controller.active || sys.pending_interrupt != INT_NONE) {
+                check_interruptions();
+            }
+            break;
+        }
         if(sys.current_pid == -1 && sys.ready_head == sys.ready_tail){
             if (sys.active_process == 0) {
                 //No hay procesos, la cpu duerme
                 sem_wait(&sys.cpu_wakeup);
+                sys.cpu_registers.PSW.interruptions_enabled = 1;
                 sys.pending_interrupt = INT_TIMER;
                 check_interruptions();
                 continue;
@@ -97,6 +105,7 @@ void* mainloop(){
                 sys.time += 1;
                 internal_timer += 1;
                 if(internal_timer >= sys.time_interruption){
+                    sys.cpu_registers.PSW.interruptions_enabled = 1;
                     sys.pending_interrupt = INT_TIMER;
                     internal_timer = 0;
                 }
