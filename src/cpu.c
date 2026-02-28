@@ -98,6 +98,11 @@ void* mainloop(){
                 //No hay absolutamente nada que hacer
                 sem_wait(&sys.cpu_wakeup);
                 internal_timer = 0;
+                if (sys.cpu_registers.PSW.pc != 103) {
+                    sys.cpu_registers.PSW.interruptions_enabled = 1;
+                    sys.pending_interrupt = INT_TIMER;
+                    check_interruptions();
+                }
                 continue;
             } else {
                 //Hay procesos dormidos
