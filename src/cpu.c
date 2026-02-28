@@ -97,6 +97,7 @@ void* mainloop(){
                 //No hay procesos, la cpu duerme
                 sem_wait(&sys.cpu_wakeup);
                 sys.cpu_registers.PSW.interruptions_enabled = 1;
+                internal_timer = 0;
                 sys.pending_interrupt = INT_TIMER;
                 check_interruptions();
                 continue;
@@ -113,11 +114,6 @@ void* mainloop(){
                 continue;
             }
         }
-        //Interrumpcion de Reloj
-        if(internal_timer >= sys.time_interruption){
-            sys.pending_interrupt = INT_TIMER;
-            internal_timer = 0;
-        };
         //Fetch Phase
         sys.cpu_registers.MAR =  sys.cpu_registers.PSW.pc;
         if(sys.cpu_registers.PSW.operation_mode == 0){
@@ -591,7 +587,14 @@ void* mainloop(){
             debug();
         }
         sys.time += 1;
-        internal_timer += 1;
+        if (sys.cpu_registers.PSW.operation_mode == 0) {
+            internal_timer += 1;
+        }
+        //Interrupcion de Reloj
+        if (internal_timer >= sys.time_interruption) {
+            sys.pending_interrupt = INT_TIMER;
+            internal_timer = 0;
+        }
         check_interruptions();
     };
     return NULL;
