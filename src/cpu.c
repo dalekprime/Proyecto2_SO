@@ -85,32 +85,31 @@ void check_interruptions(){
 void* mainloop(){
     int internal_timer = 0;
     while(1){
-        //Secuencia de Apagado
         if (sys.dma_controller.shutdown) {
-            write_in_log("Apagando");
             //Esperamos la Ultima Instruccion del DMA
             while (sys.dma_controller.active || sys.pending_interrupt != INT_NONE) {
                 check_interruptions();
             }
             break;
         }
-        //Ajustes para Dormir CPU
         if(sys.current_pid == -1 && sys.ready_head == sys.ready_tail){
-            write_in_log("Domir");
             if (sys.active_process == 0) {
                 //No hay procesos, la cpu duerme
                 sem_wait(&sys.cpu_wakeup);
+                sys.cpu_registers.PSW.interruptions_enabled = 1;
                 internal_timer = 0;
-                if (sys.cpu_registers.PSW.pc != 103) {
-                    sys.cpu_registers.PSW.interruptions_enabled = 1;
-                    sys.pending_interrupt = INT_TIMER;
-                    check_interruptions();
-                }
+                sys.pending_interrupt = INT_TIMER;
+                check_interruptions();
                 continue;
             } else {
                 //Avanza el Reloj, Si hay procesos dormidos
                 sys.time += 1;
-                sys.pending_interrupt = INT_TIMER;
+                internal_timer += 1;
+                if(internal_timer >= sys.time_interruption){
+                    sys.cpu_registers.PSW.interruptions_enabled = 1;
+                    sys.pending_interrupt = INT_TIMER;
+                    internal_timer = 0;
+                }
                 check_interruptions();
                 continue;
             }
@@ -122,6 +121,7 @@ void* mainloop(){
         };
         sys.cpu_registers.MDR = memory_read(sys.cpu_registers.MAR);
         sys.cpu_registers.IR = sys.cpu_registers.MDR;
+        sys.cpu_registers.PSW.pc++;
         //Decode Phase
         int opcode, addr_mode, operand;
         decode(sys.cpu_registers.IR, &opcode, &addr_mode, &operand);
@@ -464,7 +464,6 @@ void* mainloop(){
                         sprintf(log_msg, "KERNEL >> Quantum Agotado. Saliente: PID %d", sys.current_pid);
                         write_in_log(log_msg);
                     }
-                    internal_timer = 0;
                     //Revisar Procesos Dormidos
                     for (int i = 0; i < MULTIPROGRAMING_GRADE; i++) {
                         if (sys.process_table[i].state == WAITING) {
@@ -576,29 +575,26 @@ void* mainloop(){
                 sys.pending_interrupt = INT_INVALID_INSTR;
             break;
         }
+        //Logger
+        if(sys.cpu_registers.IR < 89000000 || sys.cpu_registers.IR == 99000000 ){
+            char ins[256];
+            sprintf(ins, "Instruccion Ejecutada: %d | MAR: %d | AC: %d",
+                sys.cpu_registers.IR, sys.cpu_registers.MAR, sys.cpu_registers.AC);
+            write_in_log(ins);
+        };
         //Debug
         if (sys.debug_mode_enabled == 1) {
             debug();
         }
-        if (sys.debug_mode_enabled == 1) debug();
         sys.time += 1;
-        //Timer
         if (sys.cpu_registers.PSW.operation_mode == 0) {
-            if (sys.pending_interrupt == INT_NONE) {
-                sys.cpu_registers.PSW.pc += 1;
-                internal_timer += 1;
-                if (sys.time_interruption > 0 && internal_timer >= sys.time_interruption) {
-                    sys.pending_interrupt = INT_TIMER;
-                }
-            }
+            internal_timer += 1;
         }
-        //Logger
-        if(sys.cpu_registers.IR < 89000000 || sys.cpu_registers.IR == 99000000 ){
-            char ins[256];
-            sprintf(ins, "Instruccion Ejecutada: %d | MAR: %d | AC: %d | Ciclos: %d",
-                sys.cpu_registers.IR, sys.cpu_registers.MAR, sys.cpu_registers.AC, sys.time);
-            write_in_log(ins);
-        };
+        //Interrupcion de Reloj
+        if (internal_timer >= sys.time_interruption) {
+            sys.pending_interrupt = INT_TIMER;
+            internal_timer = 0;
+        }
         check_interruptions();
     };
     return NULL;
