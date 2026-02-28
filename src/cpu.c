@@ -89,6 +89,7 @@ void* mainloop(){
             //Esperamos la Ultima Instruccion del DMA
             while (sys.dma_controller.active || sys.pending_interrupt != INT_NONE) {
                 check_interruptions();
+                usleep(100);
             }
             break;
         }
@@ -426,20 +427,11 @@ void* mainloop(){
                             //Dormir
                             param = memory_read(sys.cpu_registers.SP);
                             sys.cpu_registers.SP--;
-                            //SALVAGUARDAR ESTADO
-                            int real_pc = memory_read(sys.cpu_registers.SP);
-                            sys.cpu_registers.SP--;
-                            CPU_REGISTERS temp_regs = sys.cpu_registers;
-                            temp_regs.PSW.pc = real_pc;
-                            temp_regs.PSW.operation_mode = 0; 
-                            temp_regs.PSW.interruptions_enabled = 1;
-                            sys.process_table[sys.current_pid].data = temp_regs;
-                            //Pasamos a bloqueado
                             sys.process_table[sys.current_pid].state = WAITING;
                             sys.process_table[sys.current_pid].wake_up_time = sys.time + param;
-                            //Encolar en Bloqueados
-                            sys.waiting_queue[sys.waiting_tail] = sys.current_pid;
-                            sys.waiting_tail = (sys.waiting_tail + 1) % MULTIPROGRAMING_GRADE;
+                            int sleeping_pid = sys.current_pid;
+                            sys.current_pid = -1; 
+                            sys.cpu_registers.PSW.pc = 99; 
                             sys.pending_interrupt = INT_TIMER;
                         break;
                         default:
@@ -455,20 +447,19 @@ void* mainloop(){
             case 93:
                 if(sys.cpu_registers.PSW.operation_mode == 1){
                     write_in_log("KERNEL >> Interrupcion de Reloj");
-                    //SALVAGUARDAR PROCESO ACTUAL
                     internal_timer = 0;
+                    //SALVAGUARDAR PROCESO ACTUAL
                     if (sys.current_pid != -1 && sys.process_table[sys.current_pid].state == RUNNING) {
                         //Extraemos el PC real
                         int real_pc = memory_read(sys.cpu_registers.SP);
                         sys.cpu_registers.SP--;
-                        sys.cpu_registers.PSW.pc = real_pc;
-                        //Incluimos el Proceso en la Cola de LISTOS
                         CPU_REGISTERS temp_regs2 = sys.cpu_registers;
                         temp_regs2.PSW.pc = real_pc;
                         temp_regs2.PSW.operation_mode = 0; 
                         temp_regs2.PSW.interruptions_enabled = 1;
                         //Guardamos los Registros
                         sys.process_table[sys.current_pid].data = temp_regs2;
+                        //Incluimos el Proceso en la Cola de LISTOS
                         sys.process_table[sys.current_pid].state = READY;
                         sys.ready_queue[sys.ready_tail] = sys.current_pid;
                         sys.ready_tail = (sys.ready_tail + 1) % MULTIPROGRAMING_GRADE;
