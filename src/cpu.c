@@ -86,10 +86,23 @@ void* mainloop(){
     int internal_timer = 0;
     while(1){
         if(sys.current_pid == -1 && sys.ready_head == sys.ready_tail){
-            sem_wait(&sys.cpu_wakeup);
-            sys.pending_interrupt = INT_TIMER;
-            check_interruptions();
-            continue;
+            if (sys.active_process == 0) {
+                //No hay procesos, la cpu duerme
+                sem_wait(&sys.cpu_wakeup);
+                sys.pending_interrupt = INT_TIMER;
+                check_interruptions();
+                continue;
+            } else {
+                //Avanza el Reloj, Si hay procesos dormidos
+                sys.time += 1;
+                internal_timer += 1;
+                if(internal_timer >= sys.time_interruption){
+                    sys.pending_interrupt = INT_TIMER;
+                    internal_timer = 0;
+                }
+                check_interruptions();
+                continue;
+            }
         }
         //Interrumpcion de Reloj
         if(internal_timer >= sys.time_interruption){
@@ -413,6 +426,7 @@ void* mainloop(){
                             //Encolar en Bloqueados
                             sys.waiting_queue[sys.waiting_tail] = sys.current_pid;
                             sys.waiting_tail = (sys.waiting_tail + 1) % MULTIPROGRAMING_GRADE;
+                            sys.pending_interrupt = INT_TIMER;
                         break;
                         default:
                             //Llamada Invalida
@@ -433,17 +447,31 @@ void* mainloop(){
                         int real_pc = memory_read(sys.cpu_registers.SP);
                         sys.cpu_registers.SP--;
                         sys.cpu_registers.PSW.pc = real_pc;
-                        //Guardamos los Registros
-                        sys.process_table[sys.current_pid].data = sys.cpu_registers;
                         //Incluimos el Proceso en la Cola de LISTOS
                         sys.cpu_registers.PSW.operation_mode = 0; 
                         sys.cpu_registers.PSW.interruptions_enabled = 1;
+                        //Guardamos los Registros
+                        sys.process_table[sys.current_pid].data = sys.cpu_registers;
                         sys.process_table[sys.current_pid].state = READY;
                         sys.ready_queue[sys.ready_tail] = sys.current_pid;
                         sys.ready_tail = (sys.ready_tail + 1) % MULTIPROGRAMING_GRADE;
                         char log_msg[256];
                         sprintf(log_msg, "KERNEL >> Quantum Agotado. Saliente: PID %d", sys.current_pid);
                         write_in_log(log_msg);
+                    }
+                    //Revisar Procesos Dormidos
+                    for (int i = 0; i < MULTIPROGRAMING_GRADE; i++) {
+                        if (sys.process_table[i].state == WAITING) {
+                            if (sys.time >= sys.process_table[i].wake_up_time) {
+                                //Despertar
+                                sys.process_table[i].state = READY;
+                                sys.ready_queue[sys.ready_tail] = i;
+                                sys.ready_tail = (sys.ready_tail + 1) % MULTIPROGRAMING_GRADE;
+                                char log_msg[256];
+                                sprintf(log_msg, "KERNEL >> Proceso %d despertado y movido a LISTO", i);
+                                write_in_log(log_msg);
+                            }
+                        }
                     }
                     //CARGAR SIGUIENTE PROCESO
                     if (sys.ready_head != sys.ready_tail) {

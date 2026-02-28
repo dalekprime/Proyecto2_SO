@@ -34,7 +34,7 @@ int load_program(const char *filename, const char *prog_name) {
     char sector_buffer[TAM_SECTOR];
     int current_sector = 0;
     //Registrar el programa
-    strcpy(disk_reg[disk_prog_count].prog_name, prog_name);
+    strcpy(disk_reg[prog_count].prog_name, prog_name);
     disk_reg[prog_count].track = next_track;
     disk_reg[prog_count].cylinder = next_cylinder;
     disk_reg[prog_count].sector = 0; 
@@ -62,7 +62,7 @@ int load_program(const char *filename, const char *prog_name) {
     //Escribir el HALT de seguridad al final en su propio sector
     memset(sector_buffer, 0, TAM_SECTOR);
     sprintf(sector_buffer, "99000000");
-    write_sector(nex_track, next_cylinder, current_sector, sector_buffer);
+    write_sector(next_track, next_cylinder, current_sector, sector_buffer);
     instructions_loaded++;
     fclose(file);
     //Actualizar el catálogo
