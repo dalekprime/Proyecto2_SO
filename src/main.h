@@ -10,8 +10,8 @@
 #include "logger.h"
 
 void init();
-void start_process(const char* prog_name);
-void shell();
+void startProgram();
+void menu();
 int main();
 
 #endif

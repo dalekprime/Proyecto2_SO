@@ -51,6 +51,7 @@ void start_process(const char* prog_name) {
     extern int prog_count;
     int disk_idx = -1;
     //Buscar en disco usando prog_count
+    extern int prog_count; 
     for (int i = 0; i < MULTIPROGRAMING_GRADE; i++) {
         if (strcmp(disk_reg[i].prog_name, prog_name) == 0 && disk_reg[i].size > 0) {
             disk_idx = i; break;
