@@ -92,37 +92,11 @@ void* mainloop(){
             }
             break;
         }
-        if (sys.current_pid == -1) {
-            if (sys.ready_head != sys.ready_tail) {
-                //Hay un proceso en la cola esperando
-                sys.cpu_registers.PSW.interruptions_enabled = 1;
-                sys.pending_interrupt = INT_TIMER;
-                check_interruptions();
-                continue;
-            } else if (sys.active_process == 0) {
-                // No hay absolutamente nada, la CPU duerme
-                sem_wait(&sys.cpu_wakeup);
-                sys.cpu_registers.PSW.interruptions_enabled = 1;
-                internal_timer = 0;
-                sys.pending_interrupt = INT_TIMER;
-                check_interruptions();
-                continue;
-            } else {
-                //Hay procesos dormidos
-                usleep(1000); 
-                sys.time += 1;
-                for (int i = 0; i < MULTIPROGRAMING_GRADE; i++) {
-                    if (sys.process_table[i].state == WAITING && sys.time >= sys.process_table[i].wake_up_time) {
-                        sys.process_table[i].state = READY;
-                        sys.ready_queue[sys.ready_tail] = i;
-                        sys.ready_tail = (sys.ready_tail + 1) % MULTIPROGRAMING_GRADE;
-                        char log_msg[256];
-                        sprintf(log_msg, "KERNEL >> Proceso %d despertado", i);
-                        write_in_log(log_msg);
-                    }
-                }
-                continue;
-            }
+        //Si no proceso actual, se llama al planificador
+        if (sys.current_pid == -1){
+            sem_wait(&sys.cpu_wakeup);
+            short_planner(1);
+            continue;
         }
         //Fetch Phase
         sys.cpu_registers.MAR =  sys.cpu_registers.PSW.pc;
@@ -432,11 +406,9 @@ void* mainloop(){
                             param = memory_read(sys.cpu_registers.SP);
                             sys.cpu_registers.SP--;
                             //Pasamos a bloqueado
-                            sys.process_table[sys.current_pid].state = WAITING;
                             sys.process_table[sys.current_pid].wake_up_time = sys.time + param;
-                            sys.current_pid = -1;
+                            short_planner(3);
                             sys.cpu_registers.PSW.pc = 99; 
-                            sys.pending_interrupt = INT_TIMER;
                         break;
                         default:
                             //Llamada Invalida
@@ -452,53 +424,10 @@ void* mainloop(){
                 if(sys.cpu_registers.PSW.operation_mode == 1){
                     write_in_log("KERNEL >> Interrupcion de Reloj");
                     internal_timer = 0;
-                    //SALVAGUARDAR PROCESO ACTUAL
-                    if (sys.current_pid != -1 && sys.process_table[sys.current_pid].state == RUNNING) {
-                        //Extraemos el PC real
-                        int real_pc = memory_read(sys.cpu_registers.SP);
-                        sys.cpu_registers.SP--;
-                        CPU_REGISTERS temp = sys.cpu_registers;
-                        temp.PSW.pc = real_pc;
-                        temp.PSW.operation_mode = 0; 
-                        temp.PSW.interruptions_enabled = 1;
-                        sys.process_table[sys.current_pid].data = temp;
-                        sys.process_table[sys.current_pid].state = READY;
-                        sys.ready_queue[sys.ready_tail] = sys.current_pid;
-                        sys.ready_tail = (sys.ready_tail + 1) % MULTIPROGRAMING_GRADE;
-                        char log_msg[256];
-                        sprintf(log_msg, "KERNEL >> Quantum Agotado. Saliente: PID %d", sys.current_pid);
-                        write_in_log(log_msg);
-                    } else if (sys.current_pid == -1) {
-                        sys.cpu_registers.SP--;
-                    }
-                    //Revisar Procesos Dormidos
-                    for (int i = 0; i < MULTIPROGRAMING_GRADE; i++) {
-                        if (sys.process_table[i].state == WAITING) {
-                            if (sys.time >= sys.process_table[i].wake_up_time) {
-                                //Despertar
-                                sys.process_table[i].state = READY;
-                                sys.ready_queue[sys.ready_tail] = i;
-                                sys.ready_tail = (sys.ready_tail + 1) % MULTIPROGRAMING_GRADE;
-                                char log_msg[256];
-                                sprintf(log_msg, "KERNEL >> Proceso %d despertado y movido a LISTO", i);
-                                write_in_log(log_msg);
-                            }
-                        }
-                    }
-                    //CARGAR SIGUIENTE PROCESO
-                    if (sys.ready_head != sys.ready_tail) {
-                        sys.current_pid = sys.ready_queue[sys.ready_head];
-                        sys.ready_head = (sys.ready_head + 1) % MULTIPROGRAMING_GRADE;
-                        sys.process_table[sys.current_pid].state = RUNNING;
-                        sys.cpu_registers = sys.process_table[sys.current_pid].data;
-                        char log_msg[256];
-                        sprintf(log_msg, "KERNEL >> Cambio de Contexto. Entrante: PID %d", sys.current_pid);
-                        write_in_log(log_msg);
-                    } else {
-                        //Si la cola está vacía, la CPU entra en Reposo
-                        sys.current_pid = -1;
-                        sys.cpu_registers.PSW.operation_mode = 1
-                    }
+                    short_planner(1);
+                    sys.cpu_registers.PSW.interruptions_enabled = 1;
+                    sys.cpu_registers.PSW.operation_mode = 0;
+                    continue;
                 }else{
                     continue;
                 };
@@ -570,6 +499,7 @@ void* mainloop(){
                     //Actualiza el BCP
                     sys.process_table[sys.current_pid].state = TERMINATED;
                     sys.active_process--;
+                    sys.current_pid = -1;
                     //Llama al planificador para que asigne el siguiente trabajo
                     sys.pending_interrupt = INT_TIMER; 
                 } else {
@@ -587,23 +517,24 @@ void* mainloop(){
         if(sys.cpu_registers.PSW.operation_mode == 0 && 
             (sys.cpu_registers.IR < 89000000 || sys.cpu_registers.IR == 99000000)){
             char ins[256];
-            sprintf(ins, "Instruccion Ejecutada: %d | MAR: %d | AC: %d",
-                sys.cpu_registers.IR, sys.cpu_registers.MAR, sys.cpu_registers.AC);
+            sprintf(ins, "Instruccion Ejecutada: %d | MAR: %d | AC: %d | Proceso: %d",
+                sys.cpu_registers.IR, sys.cpu_registers.MAR, sys.cpu_registers.AC, sys.current_pid);
             write_in_log(ins);
         };
         //Debug
         if (sys.debug_mode_enabled == 1) {
             debug();
         }
-        sys.time += 1;
         //Timer
-        if (sys.cpu_registers.PSW.operation_mode == 0 && sys.cpu_registers.IR < 89000000) {
+        if (sys.cpu_registers.PSW.operation_mode == 0) {
             internal_timer += 1;
-            if (sys.time_interruption > 0 && internal_timer >= sys.time_interruption) {
-                sys.pending_interrupt = INT_TIMER;
-            }
+            
+        }
+        if (sys.time_interruption > 0 && internal_timer >= sys.time_interruption) {
+            sys.pending_interrupt = INT_TIMER;
         }
         check_interruptions();
+        sys.time += 1;
     };
     return NULL;
 };

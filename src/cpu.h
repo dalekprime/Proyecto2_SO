@@ -2,6 +2,7 @@
 #define CPU_H
 
 #include "ALU.h"
+#include "planner.h"
 #include "debugger.h"
 
 void decode(int ir, int *opcode, int *addr_mode, int *operand);

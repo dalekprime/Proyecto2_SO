@@ -8,6 +8,7 @@ int memory_read(int addr){
     if(sys.cpu_registers.PSW.operation_mode == 0){
         int eff_addr = addr;
         if(eff_addr < sys.cpu_registers.RB || eff_addr > sys.cpu_registers.RL){
+            printf("Fuera del Programa %d, %d, %d", eff_addr,sys.cpu_registers.RB, sys.cpu_registers.RL);
             sys.pending_interrupt = INT_INVALID_ADDR;
             pthread_mutex_unlock(&sys.bus_mutex);
             return -1;
