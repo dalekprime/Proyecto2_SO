@@ -1,19 +1,87 @@
+.NombreProg 5mas5
+KERNEL >> Programa 'program1.asm' cargado en Disco (Cilindro 0).
 KERNEL >> Cambio de Contexto. Entrante: PID 0
 Instruccion Ejecutada: 4100005 | MAR: 300 | AC: 5 | Proceso: 0
+Instruccion Ejecutada: 100005 | MAR: 301 | AC: 10 | Proceso: 0
+Entrando en modo Kernel...
+Interrupcion Ejecutada: 3
+KERNEL >> Interrupcion de Reloj
+KERNEL >> Quantum Agotado. Saliente: PID 0
+KERNEL >> Cambio de Contexto. Entrante: PID 0
+Instruccion Ejecutada: 25000000 | MAR: 302 | AC: 10 | Proceso: 0
+Instruccion Ejecutada: 4100007 | MAR: 303 | AC: 7 | Proceso: 0
+Entrando en modo Kernel...
+Interrupcion Ejecutada: 3
+KERNEL >> Interrupcion de Reloj
+KERNEL >> Quantum Agotado. Saliente: PID 0
+KERNEL >> Cambio de Contexto. Entrante: PID 0
+Instruccion Ejecutada: 13000000 | MAR: 304 | AC: 7 | Proceso: 0
+Entrando en modo Kernel...
+Interrupcion Ejecutada: 2
+KERNEL >> Llamada al Sistema
+KERNEL >> Interrupcion de Reloj
+KERNEL >> Quantum Agotado. Saliente: PID 0
+KERNEL >> Cambio de Contexto. Entrante: PID 0
+Instruccion Ejecutada: 4100007 | MAR: 305 | AC: 7 | Proceso: 0
+Entrando en modo Kernel...
+Interrupcion Ejecutada: 0
+KERNEL >> Llamada Invalida al Sistema
+Volviendo a Modo Usuario...
+Instruccion Ejecutada: 13000000 | MAR: 306 | AC: 7 | Proceso: 0
+Entrando en modo Kernel...
+Interrupcion Ejecutada: 3
+KERNEL >> Interrupcion de Reloj
+KERNEL >> Quantum Agotado. Saliente: PID 0
+KERNEL >> Cambio de Contexto. Entrante: PID 0
+KERNEL >> Proceso 0 llego a instruccion HALT. Terminando.
+Instruccion Ejecutada: 99000000 | MAR: 307 | AC: 7 | Proceso: -1
+Entrando en modo Kernel...
+Interrupcion Ejecutada: 3
+.NombreProg Calculadora
+KERNEL >> Programa 'program2.asm' cargado en Disco (Cilindro 1).
+KERNEL >> Cambio de Contexto. Entrante: PID 0
+Instruccion Ejecutada: 4100020 | MAR: 300 | AC: 20 | Proceso: 0
+Instruccion Ejecutada: 25000000 | MAR: 301 | AC: 20 | Proceso: 0
+Entrando en modo Kernel...
+Interrupcion Ejecutada: 3
+KERNEL >> Interrupcion de Reloj
+KERNEL >> Quantum Agotado. Saliente: PID 0
+KERNEL >> Cambio de Contexto. Entrante: PID 0
+Instruccion Ejecutada: 4100010 | MAR: 302 | AC: 10 | Proceso: 0
+Instruccion Ejecutada: 2100002 | MAR: 303 | AC: 20 | Proceso: 0
+Entrando en modo Kernel...
+Interrupcion Ejecutada: 3
+KERNEL >> Interrupcion de Reloj
+KERNEL >> Quantum Agotado. Saliente: PID 0
+KERNEL >> Cambio de Contexto. Entrante: PID 0
+Instruccion Ejecutada: 26000000 | MAR: 304 | AC: 20 | Proceso: 0
+Instruccion Ejecutada: 1100005 | MAR: 305 | AC: 15 | Proceso: 0
+Entrando en modo Kernel...
+Interrupcion Ejecutada: 3
+KERNEL >> Interrupcion de Reloj
+KERNEL >> Quantum Agotado. Saliente: PID 0
+KERNEL >> Cambio de Contexto. Entrante: PID 0
+KERNEL >> Proceso 0 llego a instruccion HALT. Terminando.
+Instruccion Ejecutada: 99000000 | MAR: 306 | AC: 15 | Proceso: -1
+Entrando en modo Kernel...
+Interrupcion Ejecutada: 3
+KERNEL >> Cambio de Contexto. Entrante: PID 0
+Instruccion Ejecutada: 4100005 | MAR: 300 | AC: 5 | Proceso: 0
+Instruccion Ejecutada: 100005 | MAR: 301 | AC: 10 | Proceso: 0
 Entrando en modo Kernel...
 Interrupcion Ejecutada: 3
 KERNEL >> Interrupcion de Reloj
 KERNEL >> Quantum Agotado. Saliente: PID 0
 KERNEL >> Cambio de Contexto. Entrante: PID 1
-Instruccion Ejecutada: 1 | MAR: 380 | AC: 5000000 | Proceso: 1
-Instruccion Ejecutada: 25000000 | MAR: 381 | AC: 5000000 | Proceso: 1
+Instruccion Ejecutada: 4100020 | MAR: 380 | AC: 20 | Proceso: 1
+Instruccion Ejecutada: 25000000 | MAR: 381 | AC: 20 | Proceso: 1
 Entrando en modo Kernel...
 Interrupcion Ejecutada: 3
 KERNEL >> Interrupcion de Reloj
 KERNEL >> Quantum Agotado. Saliente: PID 1
 KERNEL >> Cambio de Contexto. Entrante: PID 0
-Instruccion Ejecutada: 100005 | MAR: 301 | AC: 10 | Proceso: 0
 Instruccion Ejecutada: 25000000 | MAR: 302 | AC: 10 | Proceso: 0
+Instruccion Ejecutada: 4100007 | MAR: 303 | AC: 7 | Proceso: 0
 Entrando en modo Kernel...
 Interrupcion Ejecutada: 3
 KERNEL >> Interrupcion de Reloj
@@ -26,18 +94,19 @@ Interrupcion Ejecutada: 3
 KERNEL >> Interrupcion de Reloj
 KERNEL >> Quantum Agotado. Saliente: PID 1
 KERNEL >> Cambio de Contexto. Entrante: PID 0
-Instruccion Ejecutada: 4100007 | MAR: 303 | AC: 7 | Proceso: 0
 Instruccion Ejecutada: 13000000 | MAR: 304 | AC: 7 | Proceso: 0
 Entrando en modo Kernel...
-Interrupcion Ejecutada: 3
+Interrupcion Ejecutada: 2
+KERNEL >> Llamada al Sistema
 KERNEL >> Interrupcion de Reloj
 KERNEL >> Quantum Agotado. Saliente: PID 0
 KERNEL >> Cambio de Contexto. Entrante: PID 1
-Instruccion Ejecutada: 26000000 | MAR: 384 | AC: -1 | Proceso: 1
+Instruccion Ejecutada: 26000000 | MAR: 384 | AC: 20 | Proceso: 1
 Entrando en modo Kernel...
-Interrupcion Ejecutada: 6
-KERNEL >> Dirreccion Invalida
+Interrupcion Ejecutada: 0
+KERNEL >> Llamada Invalida al Sistema
 Volviendo a Modo Usuario...
+Instruccion Ejecutada: 1100005 | MAR: 385 | AC: 15 | Proceso: 1
 Entrando en modo Kernel...
 Interrupcion Ejecutada: 3
 KERNEL >> Interrupcion de Reloj
@@ -50,9 +119,8 @@ Interrupcion Ejecutada: 3
 KERNEL >> Interrupcion de Reloj
 KERNEL >> Quantum Agotado. Saliente: PID 0
 KERNEL >> Cambio de Contexto. Entrante: PID 1
-Instruccion Ejecutada: 1100005 | MAR: 385 | AC: 10000006 | Proceso: 1
 KERNEL >> Proceso 1 llego a instruccion HALT. Terminando.
-Instruccion Ejecutada: 99000000 | MAR: 386 | AC: 10000006 | Proceso: -1
+Instruccion Ejecutada: 99000000 | MAR: 386 | AC: 15 | Proceso: -1
 Entrando en modo Kernel...
 Interrupcion Ejecutada: 3
 KERNEL >> Cambio de Contexto. Entrante: PID 0

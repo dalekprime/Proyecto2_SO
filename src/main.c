@@ -103,8 +103,8 @@ void start_process(const char* prog_name) {
     memset(&sys.process_table[pid].data, 0, sizeof(CPU_REGISTERS));
     sys.process_table[pid].data.RB = base_addr;
     sys.process_table[pid].data.RL = base_addr + MEMORY_BLOCK_SIZE - 1;
-    sys.process_table[pid].data.RX = sys.process_table[pid].data.RL; 
-    sys.process_table[pid].data.SP = sys.process_table[pid].data.RL;
+    sys.process_table[pid].data.SP = base_addr + disk_reg[disk_idx].size -1;
+    sys.process_table[pid].data.RX = sys.process_table[pid].data.SP; 
     sys.process_table[pid].data.PSW.pc = 0; 
     sys.process_table[pid].data.PSW.operation_mode = 0; 
     sys.process_table[pid].data.PSW.interruptions_enabled = 1;

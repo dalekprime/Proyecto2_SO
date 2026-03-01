@@ -94,7 +94,14 @@ void* mainloop(){
         }
         //Si no proceso actual, se llama al planificador
         if (sys.current_pid == -1){
-            sem_wait(&sys.cpu_wakeup);
+            if(sys.ready_head == sys.ready_tail){
+                if(sys.active_process == 0){
+                    sem_wait(&sys.cpu_wakeup);
+                }else{
+                    usleep(1000);
+                    sys.time++;
+                }
+            }
             short_planner(1);
             continue;
         }
@@ -408,7 +415,7 @@ void* mainloop(){
                             //Pasamos a bloqueado
                             sys.process_table[sys.current_pid].wake_up_time = sys.time + param;
                             short_planner(3);
-                            sys.cpu_registers.PSW.pc = 99; 
+                            continue;
                         break;
                         default:
                             //Llamada Invalida
@@ -526,12 +533,11 @@ void* mainloop(){
             debug();
         }
         //Timer
-        if (sys.cpu_registers.PSW.operation_mode == 0) {
+        if (sys.cpu_registers.PSW.operation_mode == 0 && sys.cpu_registers.IR < 89000000) {
             internal_timer += 1;
-            
-        }
-        if (sys.time_interruption > 0 && internal_timer >= sys.time_interruption) {
-            sys.pending_interrupt = INT_TIMER;
+            if (sys.time_interruption > 0 && internal_timer >= sys.time_interruption) {
+                sys.pending_interrupt = INT_TIMER;
+            }
         }
         check_interruptions();
         sys.time += 1;
