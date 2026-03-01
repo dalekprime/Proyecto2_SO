@@ -2,6 +2,7 @@
 
 void short_planner(int new_state){
     //SALVAGUARDAR PROCESO ACTUAL
+    char log_msg[256];
     if (sys.current_pid != -1) {
         //Extraemos el PC real
         int real_pc = memory_read(sys.cpu_registers.SP);
@@ -17,15 +18,15 @@ void short_planner(int new_state){
             sys.process_table[sys.current_pid].state = READY;
             sys.ready_queue[sys.ready_tail] = sys.current_pid;
             sys.ready_tail = (sys.ready_tail + 1) % MULTIPROGRAMING_GRADE;
+            sprintf(log_msg, "KERNEL >> Quantum Agotado. Saliente: PID %d", sys.current_pid);
         }
         else if(new_state == 3){
             //Colocamos el Proceso en la Cola de Wait
             sys.process_table[sys.current_pid].state = WAITING;
             sys.waiting_queue[sys.waiting_tail] = sys.current_pid;
             sys.waiting_tail = (sys.waiting_tail + 1) % MULTIPROGRAMING_GRADE;
+            sprintf(log_msg, "KERNEL >> Proceso PID %d se ha bloqueado/dormido", sys.current_pid);
         }
-        char log_msg[256];
-        sprintf(log_msg, "KERNEL >> Quantum Agotado. Saliente: PID %d", sys.current_pid);
         write_in_log(log_msg);
     }
     //REVISAR PROCESOS DORMIDOS

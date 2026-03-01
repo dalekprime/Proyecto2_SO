@@ -432,8 +432,6 @@ void* mainloop(){
                     write_in_log("KERNEL >> Interrupcion de Reloj");
                     internal_timer = 0;
                     short_planner(1);
-                    sys.cpu_registers.PSW.interruptions_enabled = 1;
-                    sys.cpu_registers.PSW.operation_mode = 0;
                     continue;
                 }else{
                     continue;

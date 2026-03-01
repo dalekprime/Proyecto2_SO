@@ -79,6 +79,11 @@ void start_process(const char* prog_name) {
         printf("SISTEMA >> Error: RAM Llena. No hay particiones libres para '%s'.\n", prog_name);
         return;
     }
+    if (disk_reg[disk_idx].size > MEMORY_BLOCK_SIZE) {
+        printf("SISTEMA >> Error: El programa '%s' excede el límite de partición (%d inst).\n", prog_name, MEMORY_BLOCK_SIZE);
+        sys.memory_blocks[mem_block] = false; // Liberamos la partición que habíamos reservado
+        return;
+    }
     //Mover de Disco a RAM 
     int base_addr = OS_MEM_RESERVED + (mem_block * MEMORY_BLOCK_SIZE);
     int track = disk_reg[disk_idx].track;
